@@ -54,6 +54,10 @@ jobs:
       FACTCHAT_API_KEY: ${{ secrets.FACTCHAT_API_KEY }}
     steps:
       - uses: actions/checkout@v4
+      - uses: docker/login-action@v3               # 비공개 이미지도 받을 수 있게 로그인한다
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Deploy
         shell: bash
         run: |
