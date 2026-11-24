@@ -60,7 +60,9 @@ def validate_question(raw: object, chunks: dict[int, str]) -> tuple[Question | N
     prompt = _clean(raw.get("prompt", ""))
     if not prompt:
         return None, "bad_prompt"
-    evidence = _evidence(raw, chunks) or ""
+    evidence = _evidence(raw, chunks)
+    if evidence is None:
+        return None, "no_evidence"
     answer = _clean(raw.get("answer", ""))
     if kind == "mcq":
         return _validate_mcq(raw, prompt, answer, evidence)
