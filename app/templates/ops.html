@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% set active = "ops" %}
+{% block content %}
+<h1>운영 현황</h1>
+<div class="stats four">
+  <div class="stat"><div class="stat-num">{{ summary.calls }}</div><div class="stat-label">LLM 호출</div></div>
+  <div class="stat"><div class="stat-num">{{ summary.failures }}</div><div class="stat-label">호출 실패</div></div>
+  <div class="stat"><div class="stat-num">{{ summary.discarded }}</div><div class="stat-label">검증에서 버린 문제</div></div>
+  <div class="stat"><div class="stat-num">{{ summary.fallbacks }}</div><div class="stat-label">대체 동작 횟수</div></div>
+</div>
+<div class="grid2">
+  <section class="card">
+    <h2>서비스 상태</h2>
+    <table>
+      <tr><th>전체</th><td><span class="pill {{ 'ok' if health.status == 'ok' else 'bad' }}">{{ health.status }}</span></td></tr>
+      <tr><th>데이터베이스</th><td>{{ health.db }} (구조 버전 {{ health.schema }})</td></tr>
+      <tr><th>작업자</th><td>{{ health.worker }}</td></tr>
+      <tr><th>LLM</th><td>{{ health.llm }} · {{ model }}</td></tr>
+      <tr><th>배포 버전</th><td><code>{{ health.version }}</code></td></tr>
+    </table>
+  </section>
+  <section class="card">
+    <h2>저장된 문제</h2>
+    <table>
+      {% for kind, label in KIND_LABEL.items() %}
+      <tr><th>{{ label }}</th><td>{{ summary.questions.get(kind, 0) }}개</td></tr>
+      {% endfor %}
+    </table>
+  </section>
+</div>
+<section class="card">
+  <h2>최근 LLM 기록</h2>
+  <table class="log">
+    <tr><th>시각(UTC)</th><th>용도</th><th>호출</th><th>실패</th><th>버린 문제</th><th>대체</th></tr>
+    {% for r in summary.recent %}
+    <tr><td>{{ r.at[:19].replace("T", " ") }}</td><td>{{ "출제" if r.purpose == "generate" else "채점" }}</td>
+        <td>{{ r.calls }}</td><td>{{ r.failures }}</td><td>{{ r.discarded }}</td><td>{{ "예" if r.fallback else "-" }}</td></tr>
+    {% else %}
+    <tr><td colspan="6" class="empty">아직 기록이 없습니다.</td></tr>
+    {% endfor %}
+  </table>
+</section>
+{% endblock %}

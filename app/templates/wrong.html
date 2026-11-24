@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% set active = "wrong" %}
+{% block content %}
+<h1>오답 노트</h1>
+<section class="card">
+  <h2>마지막에 틀린 문제 {{ questions | length }}개</h2>
+  {% for q in questions %}
+  <a class="row" href="/quiz/{{ q.material_id }}">
+    <span class="pill kind-{{ q.kind }}">{{ KIND_LABEL[q.kind] }}</span>
+    <span class="row-title">{{ q.prompt }}</span>
+    <span class="muted">{{ q.filename }}</span>
+  </a>
+  {% else %}
+  <p class="empty">틀린 문제가 없습니다.</p>
+  {% endfor %}
+</section>
+{% endblock %}

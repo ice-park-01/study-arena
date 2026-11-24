@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% set active = "materials" %}
+{% block content %}
+<h1>자료</h1>
+<section class="card">
+  <h2>강의자료 올리기</h2>
+  <p class="muted">pptx, pdf, txt 파일을 올리면 슬라이드 단위로 나눠 객관식·주관식 문제를 만듭니다.
+  {% if not llm_enabled %}<br><strong>LLM 키가 설정되지 않아 빈칸 문제로 대체합니다.</strong>{% endif %}</p>
+  {% if error %}<div class="alert">{{ error }}</div>{% endif %}
+  <form method="post" action="/materials" enctype="multipart/form-data" class="inline">
+    <input type="file" name="file" accept=".pptx,.pdf,.txt,.md" required>
+    <button class="btn primary">올리고 문제 만들기</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>내 자료 {{ materials | length }}개</h2>
+  {% for m in materials %}
+  <a class="row" href="/materials/{{ m.id }}">
+    <span class="row-title">{{ m.filename }}</span>
+    {% if m.status == "ready" %}<span class="pill ok">{{ m.n_questions }}문제</span>
+    {% elif m.status == "failed" %}<span class="pill bad">실패</span>
+    {% else %}<span class="pill wait">문제 만드는 중</span>{% endif %}
+  </a>
+  {% else %}
+  <p class="empty">아직 올린 자료가 없습니다.</p>
+  {% endfor %}
+</section>
+{% endblock %}

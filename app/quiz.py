@@ -141,3 +141,18 @@ def make_cloze(chunk_id: int, text: str) -> Question | None:
     sentence = re.sub(r"\s+", " ", sentence)[:400]
     prompt = "빈칸에 들어갈 말을 쓰세요.\n" + sentence.replace(answer, BLANK)
     return Question("cloze", prompt, answer, chunk_id)
+
+
+def make_clozes(chunk_id: int, text: str, limit: int) -> list[Question]:
+    """한 조각에서 문장마다 빈칸 문제를 하나씩, 최대 limit개 만든다."""
+    questions: list[Question] = []
+    seen: set[str] = set()
+    for sentence in SENTENCE_END.split(text):
+        question = make_cloze(chunk_id, sentence)
+        if question is None or question.answer.lower() in seen:
+            continue
+        seen.add(question.answer.lower())
+        questions.append(question)
+        if len(questions) >= limit:
+            break
+    return questions

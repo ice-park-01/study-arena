@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Study Arena{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="/"><span class="logo">SA</span> Study Arena</a>
+    {% if user %}
+    <nav>
+      <a href="/materials" class="{{ 'on' if active == 'materials' }}">자료</a>
+      <a href="/wrong" class="{{ 'on' if active == 'wrong' }}">오답 노트</a>
+      <a href="/groups" class="{{ 'on' if active == 'groups' }}">스터디 그룹</a>
+      <a href="/ops" class="{{ 'on' if active == 'ops' }}">운영 현황</a>
+    </nav>
+    <form method="post" action="/logout" class="who">
+      <span>{{ user.name }}</span>
+      <button class="link">로그아웃</button>
+    </form>
+    {% endif %}
+  </header>
+
+  {% if user %}
+  <section class="timerbar" id="timerbar" data-seconds="{{ today_seconds }}">
+    <div>
+      <div class="timer-label">오늘 공부한 시간</div>
+      <div class="timer-value" id="timer-value">0:00:00</div>
+    </div>
+    <div class="timer-right">
+      <span class="pill" id="timer-state">쉬는 중</span>
+      <button class="btn primary" id="timer-btn" type="button">공부 시작</button>
+    </div>
+  </section>
+  {% endif %}
+
+  <main class="{% block main_class %}{% endblock %}">
+    {% block content %}{% endblock %}
+  </main>
+  <footer>Study Arena · 버전 {{ version }}</footer>
+  {% if user %}<script src="/static/timer.js"></script>{% endif %}
+  {% block script %}{% endblock %}
+</body>
+</html>

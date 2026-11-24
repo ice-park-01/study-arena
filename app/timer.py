@@ -38,3 +38,19 @@ def format_duration(seconds: int) -> str:
     if hours:
         return f"{hours}시간 {minutes:02d}분"
     return f"{minutes}분"
+
+
+def split_by_day(now: datetime, credited: int) -> list[tuple[date, int]]:
+    """인정된 시간 (now - credited, now] 구간을 한국 날짜별로 나눈다."""
+    if credited <= 0:
+        return []
+    end = now.astimezone(KST)
+    start = end - timedelta(seconds=credited)
+    midnight = end.replace(hour=0, minute=0, second=0, microsecond=0)
+    if start >= midnight:
+        return [(end.date(), credited)]
+    before = int((midnight - start).total_seconds())
+    parts = [(start.date(), before)]
+    if credited - before > 0:
+        parts.append((end.date(), credited - before))
+    return parts

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% set active = "groups" %}
+{% block content %}
+<h1>스터디 그룹</h1>
+{% if error %}<div class="alert">{{ error }}</div>{% endif %}
+<div class="grid2">
+  <section class="card">
+    <h2>그룹 만들기</h2>
+    <p class="muted">그룹을 만들면 친구에게 보낼 초대 코드가 나옵니다.</p>
+    <form method="post" action="/groups" class="inline">
+      <input name="name" placeholder="예: 오픈소스 기말 스터디" maxlength="30" required>
+      <button class="btn primary">만들기</button>
+    </form>
+  </section>
+  <section class="card">
+    <h2>초대 코드로 가입</h2>
+    <p class="muted">친구에게 받은 6자리 코드를 입력하세요.</p>
+    <form method="post" action="/groups/join" class="inline">
+      <input name="code" placeholder="ABC234" maxlength="6" class="code-input" required autocomplete="off">
+      <button class="btn primary">가입</button>
+    </form>
+  </section>
+</div>
+<section class="card">
+  <h2>내 그룹 {{ groups | length }}개</h2>
+  {% for g in groups %}
+  <a class="row" href="/groups/{{ g.id }}"><span class="row-title">{{ g.name }}</span><span class="muted">{{ g.n_members }}명</span></a>
+  {% else %}
+  <p class="empty">아직 가입한 그룹이 없습니다.</p>
+  {% endfor %}
+</section>
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% set active = "materials" %}
+{% block content %}
+<p class="crumb"><a href="/materials">자료</a> ›</p>
+<h1>{{ m.filename }}</h1>
+
+{% if m.status in ("queued", "processing") %}
+<section class="card center" id="waiting" data-id="{{ m.id }}">
+  <div class="spinner"></div>
+  <h2>문제를 만들고 있습니다</h2>
+  <p class="muted">자료를 슬라이드 단위로 나누고 LLM이 문제를 출제하는 중입니다. 완료되면 자동으로 바뀝니다.</p>
+</section>
+{% elif m.status == "failed" %}
+<section class="card"><div class="alert">{{ m.error }}</div><a class="btn" href="/materials">다른 자료 올리기</a></section>
+{% else %}
+<div class="stats">
+  <div class="stat"><div class="stat-num">{{ n_questions }}</div><div class="stat-label">만든 문제</div></div>
+  <div class="stat"><div class="stat-num">{{ progress.solved }} / {{ progress.total }}</div><div class="stat-label">맞힌 문제</div></div>
+  <div class="stat"><div class="stat-num">{{ m.discarded }}</div><div class="stat-label">검증에서 버린 문제</div></div>
+</div>
+<section class="card">
+  <h2>출제 결과</h2>
+  <ul class="facts">
+    <li>슬라이드·문단 조각 <strong>{{ m.n_chunks }}개</strong>에서 출제했습니다.</li>
+    <li>객관식 <strong>{{ kinds.mcq }}</strong> · 주관식 <strong>{{ kinds.short }}</strong> · 빈칸 <strong>{{ kinds.cloze }}</strong></li>
+    <li>근거가 없거나 형식이 틀린 문제 <strong>{{ m.discarded }}개</strong>는 저장하지 않았습니다.</li>
+    {% if m.used_fallback %}<li class="warn">LLM을 쓸 수 없는 구간은 빈칸 문제로 대체했습니다.</li>{% endif %}
+  </ul>
+  <a class="btn primary big" href="/quiz/{{ m.id }}">문제 풀기</a>
+</section>
+{% endif %}
+{% endblock %}
+{% block script %}
+<script>
+const waiting = document.getElementById("waiting");
+if (waiting) {
+  setInterval(async () => {
+    const r = await fetch(`/api/materials/${waiting.dataset.id}`);
+    if (r.ok && !["queued", "processing"].includes((await r.json()).status)) location.reload();
+  }, 2000);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ user.name }}님, 오늘도 시작해 볼까요?</h1>
+<div class="stats">
+  <div class="stat"><div class="stat-num">{{ today_seconds | duration }}</div><div class="stat-label">오늘</div></div>
+  <div class="stat"><div class="stat-num">{{ week_seconds | duration }}</div><div class="stat-label">이번 주</div></div>
+  <div class="stat"><div class="stat-num">{{ wrong }}문제</div><div class="stat-label">다시 풀 오답</div></div>
+</div>
+
+<div class="grid2">
+  <section class="card">
+    <div class="card-head"><h2>내 자료</h2><a href="/materials">전체 보기</a></div>
+    {% for m in materials %}
+    <a class="row" href="/materials/{{ m.id }}">
+      <span class="row-title">{{ m.filename }}</span>
+      <span class="muted">{{ m.n_questions }}문제</span>
+    </a>
+    {% else %}
+    <p class="empty">아직 올린 자료가 없습니다. <a href="/materials">강의자료 올리기</a></p>
+    {% endfor %}
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2>스터디 그룹</h2><a href="/groups">전체 보기</a></div>
+    {% for g in groups %}
+    <a class="row" href="/groups/{{ g.id }}">
+      <span class="row-title">{{ g.name }}</span>
+      <span class="muted">오늘 {{ g.rank }}위 / {{ g.n_members }}명</span>
+    </a>
+    {% else %}
+    <p class="empty">친구와 공부 시간을 겨뤄 보세요. <a href="/groups">그룹 만들기</a></p>
+    {% endfor %}
+  </section>
+</div>
+{% endblock %}

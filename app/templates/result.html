@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% set active = "materials" %}
+{% block main_class %}narrow{% endblock %}
+{% block content %}
+<p class="crumb"><a href="/materials/{{ m.id }}">{{ m.filename }}</a> ›</p>
+<section class="card result {{ 'right' if correct else 'wrong' }}">
+  <div class="verdict">{{ "정답입니다" if correct else "오답입니다" }}</div>
+  <span class="pill kind-{{ q.kind }}">{{ KIND_LABEL[q.kind] }}</span>
+  <h2 class="prompt">{{ q.prompt }}</h2>
+  <dl>
+    <dt>내 답</dt><dd>{{ answer or "(입력 없음)" }}</dd>
+    <dt>모범답안</dt><dd>{{ q.answer }}</dd>
+    {% if feedback %}<dt>피드백</dt><dd>{{ feedback }}</dd>{% endif %}
+    <dt>채점 방식</dt>
+    <dd>{% if by == "llm" %}LLM 채점{% elif by == "keywords" %}핵심어 채점{% else %}정답 일치{% endif %}</dd>
+  </dl>
+  <details open>
+    <summary>근거 자료</summary>
+    <blockquote>{{ chunk.text }}</blockquote>
+  </details>
+  <a class="btn primary big wide" href="/quiz/{{ m.id }}">다음 문제</a>
+</section>
+{% endblock %}

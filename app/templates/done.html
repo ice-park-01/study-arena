@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% set active = "materials" %}
+{% block main_class %}narrow{% endblock %}
+{% block content %}
+<section class="card center">
+  <div class="verdict">모든 문제를 맞혔습니다</div>
+  <p class="muted">{{ m.filename }} · {{ progress.total }}문제 · {{ progress.attempts }}번 시도</p>
+  <a class="btn primary" href="/materials">다른 자료 풀기</a>
+  <a class="btn" href="/groups">순위 보러 가기</a>
+</section>
+{% endblock %}

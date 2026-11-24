@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 import httpx
 
-from app.quiz import Question, filter_valid, grade_by_keywords, make_cloze
+from app.quiz import Question, filter_valid, grade_by_keywords, make_clozes
 
 DEFAULT_BASE_URL = "https://factchat-cloud.mindlogic.ai/v1/gateway"
 DEFAULT_MODEL = "gpt-5.6-luna"
@@ -127,11 +127,9 @@ def _generation_prompt(chunks: dict[int, str], n_mcq: int, n_short: int) -> str:
 
 
 def _cloze_fallback(chunks: dict[int, str], limit: int) -> list[Question]:
-    questions = []
+    questions: list[Question] = []
     for chunk_id, text in chunks.items():
-        question = make_cloze(chunk_id, text)
-        if question is not None:
-            questions.append(question)
+        questions.extend(make_clozes(chunk_id, text, limit - len(questions)))
         if len(questions) >= limit:
             break
     return questions

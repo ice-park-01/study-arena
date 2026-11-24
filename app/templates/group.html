@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% set active = "groups" %}
+{% block content %}
+<p class="crumb"><a href="/groups">스터디 그룹</a> ›</p>
+<div class="group-head">
+  <h1>{{ g.name }}</h1>
+  <div class="invite">초대 코드 <strong>{{ g.code }}</strong></div>
+</div>
+<div class="grid2" id="ranking" data-id="{{ g.id }}" data-me="{{ user.name }}">
+  {% for key, title in (("today", "오늘의 순위"), ("week", "이번 주 순위")) %}
+  <section class="card">
+    <h2>{{ title }}</h2>
+    <ol class="rank" data-board="{{ key }}">
+      {% for r in ranking[key] %}
+      <li class="{{ 'me' if r.name == user.name }}">
+        <span class="place place-{{ r.rank }}">{{ r.rank }}</span>
+        <span class="rank-name">{{ r.name }}{% if r.studying %}<span class="live">공부 중</span>{% endif %}</span>
+        <span class="rank-time">{{ r.label }}</span>
+      </li>
+      {% endfor %}
+    </ol>
+  </section>
+  {% endfor %}
+</div>
+<p class="muted center">순위는 10초마다 새로 고쳐집니다. 공부 시간은 서버 시계로만 계산합니다.</p>
+{% endblock %}
+{% block script %}
+<script>
+const board = document.getElementById("ranking");
+function row(r, me) {
+  const li = document.createElement("li");
+  if (r.name === me) li.className = "me";
+  const place = document.createElement("span"); place.className = `place place-${r.rank}`; place.textContent = r.rank;
+  const name = document.createElement("span"); name.className = "rank-name"; name.textContent = r.name;
+  if (r.studying) { const live = document.createElement("span"); live.className = "live"; live.textContent = "공부 중"; name.append(live); }
+  const time = document.createElement("span"); time.className = "rank-time"; time.textContent = r.label;
+  li.append(place, name, time);
+  return li;
+}
+setInterval(async () => {
+  const res = await fetch(`/api/groups/${board.dataset.id}/ranking`);
+  if (!res.ok) return;
+  const data = await res.json();
+  for (const key of ["today", "week"]) {
+    board.querySelector(`[data-board=${key}]`).replaceChildren(...data[key].map(r => row(r, board.dataset.me)));
+  }
+}, 10000);
+</script>
+{% endblock %}
