@@ -119,7 +119,7 @@ def test_short_keywords_must_appear_in_chunk():
 
 
 def test_filter_valid_counts_discarded():
-    raws = [mcq(), mcq(chunk_id=99), short(), short(keywords=[])]
+    raws = [mcq(), mcq(answer="보기에 없는 답"), short(), short(keywords=[])]
     questions, discarded = filter_valid(raws, CHUNKS)
     assert [q.kind for q in questions] == ["mcq", "short"]
     assert discarded == 2
