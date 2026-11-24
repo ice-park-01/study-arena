@@ -67,3 +67,25 @@ def test_next_question_prefers_unanswered_then_wrong(store):
     assert store.next_question(uid, mid)["id"] == q2["id"]  # 틀린 문제를 다시 낸다
     assert [w["id"] for w in store.wrong_questions(uid)] == [q2["id"]]
     assert store.material_progress(uid, mid) == {"total": 2, "solved": 1, "attempts": 2}
+
+
+def test_interrupted_jobs_are_requeued_without_leftovers(store):
+    uid = store.create_user("성진", "h")
+    mid = store.add_material(uid, "a.txt", b"data")
+    store.enqueue_job(mid)
+    assert store.claim_job() == mid
+    [cid] = store.add_chunks(mid, ["처리 도중 저장된 조각"])
+    store.add_questions(mid, [Question("cloze", "Q", "a", cid)])
+    # 여기서 작업자가 재배포로 교체됐다고 하자.
+    assert store.requeue_interrupted_jobs() == 1
+    assert store.get_chunks(mid) == {} and store.list_questions(mid) == []
+    assert store.get_material(mid)["status"] == "queued"
+    assert store.claim_job() == mid
+
+
+def test_clearing_last_seen_ends_the_session(store):
+    uid = store.create_user("성진", "h")
+    store.record_tick(uid, T0)
+    store.clear_last_tick(uid)
+    assert store.last_tick(uid) is None
+    assert store.record_tick(uid, T0 + timedelta(seconds=30)) == 0

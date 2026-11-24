@@ -202,3 +202,11 @@ def test_cloze_is_graded_without_llm():
     assert grade_short(cloze, " docker ", CHUNKS[7], llm).correct is True
     assert grade_short(cloze, "Podman", CHUNKS[7], llm).correct is False
     assert post.calls == []
+
+
+def test_unexpected_response_shape_becomes_llm_error():
+    llm, _ = client(FakeResponse(body=["목록", "형태"]))
+    with pytest.raises(LLMError):
+        llm.complete("hi")
+    llm, _ = client(FakeResponse(body=["목록", "형태"]))
+    assert generate_questions(CHUNKS, llm).used_fallback is True

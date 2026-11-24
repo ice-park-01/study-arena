@@ -168,3 +168,46 @@ def test_make_cloze_returns_none_for_short_text():
 
 def test_make_cloze_is_deterministic():
     assert make_cloze(2, CHUNKS[2]) == make_cloze(2, CHUNKS[2])
+
+
+# --- 리뷰에서 나온 결함 ---------------------------------------------------
+
+
+def test_null_fields_are_not_saved_as_the_word_none():
+    assert validate_question(short(prompt=None), CHUNKS) == (None, "bad_prompt")
+    assert validate_question(short(answer=None), CHUNKS) == (None, "bad_answer")
+    assert validate_question(mcq(choices=["red, green, refactor", None, "b", "c"]), CHUNKS) == (None, "bad_choices")
+    assert validate_question(short(keywords=["테스트", None, 3]), CHUNKS) == (None, "bad_keywords")
+
+
+def test_mcq_answer_needs_most_of_its_words_in_the_chunk():
+    # "TDD" 한 단어만 근거에 있고 나머지는 지어낸 정답
+    raw = mcq(
+        choices=["TDD는 배포 이후에 블록체인으로 검증한다", "plan, do, see", "build, ship, run", "read, eval, print"],
+        answer="TDD는 배포 이후에 블록체인으로 검증한다",
+    )
+    assert validate_question(raw, CHUNKS) == (None, "answer_not_in_evidence")
+
+
+def test_single_character_answer_can_be_valid():
+    chunks = {1: "TDD cycle has 5 steps: add a test, run, write code, run tests, refactor."}
+    raw = mcq(prompt="TDD cycle의 단계 수는?", choices=["3", "4", "5", "6"], answer="5")
+    q, reason = validate_question(raw, chunks)
+    assert reason == "" and q.answer == "5"
+
+
+def test_one_letter_keywords_are_rejected():
+    assert validate_question(short(keywords=["이", "다"]), CHUNKS) == (None, "bad_keywords")
+
+
+def test_cloze_never_blanks_the_slide_label():
+    q = make_cloze(3, "[슬라이드 3] 운영체제는 자원을 관리한다. 커널이 핵심이다.")
+    assert q is not None
+    assert q.answer != "슬라이드"
+    assert "[슬라이드 3]" not in q.prompt
+
+
+def test_cloze_prompt_always_contains_the_blank():
+    text = "가나다 " * 150 + "Supercalifragilistic 라는 단어가 문장 끝에 있다"
+    q = make_cloze(1, text)
+    assert q is None or "____" in q.prompt

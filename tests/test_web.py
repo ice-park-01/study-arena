@@ -153,3 +153,34 @@ def test_ops_page_shows_llm_counters(app):
     upload(c)
     page = c.get("/ops").text
     assert "LLM 호출" in page and "버린 문제" in page
+
+
+def test_paused_time_is_not_credited(app, clock):
+    c = signup(app, "성진")
+    c.post("/api/tick")
+    clock.tick(30)
+    c.post("/api/tick")
+    assert c.post("/api/pause").json() == {"studying": False}
+    clock.tick(60)  # 멈춘 채로 1분
+    assert c.post("/api/tick").json()["today_seconds"] == 30
+    assert TestClient(app).post("/api/pause").status_code == 401
+
+
+def test_pausing_removes_the_studying_badge(app, clock):
+    owner = signup(app, "성진")
+    r = owner.post("/groups", data={"name": "스터디"}, follow_redirects=False)
+    gid = int(r.headers["location"].split("/")[-1])
+    owner.post("/api/tick")
+    assert owner.get(f"/api/groups/{gid}/ranking").json()["today"][0]["studying"] is True
+    owner.post("/api/pause")
+    assert owner.get(f"/api/groups/{gid}/ranking").json()["today"][0]["studying"] is False
+
+
+def test_oversized_upload_is_rejected(app, monkeypatch):
+    import app.main as main
+
+    monkeypatch.setattr(main, "MAX_UPLOAD", 100)
+    c = signup(app, "성진")
+    r = c.post("/materials", files={"file": ("big.txt", b"x" * 500, "text/plain")})
+    assert "파일이 너무 큽니다" in r.text
+    assert app.state.store.list_materials(1) == []
