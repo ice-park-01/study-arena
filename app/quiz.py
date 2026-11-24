@@ -14,6 +14,8 @@ KEYWORD_THRESHOLD = 0.6
 CLOZE_MIN_TEXT = 30
 CLOZE_MIN_WORD = 4
 BLANK = "____"
+QUOTE_MIN = 8      # 이보다 짧은 인용문은 근거로 보지 않는다
+KEYWORD_MAX = 20   # 핵심어는 문장이 아니라 짧은 용어여야 한다
 CLOZE_MAX_SENTENCE = 400
 LABEL = re.compile(r"\[(?:슬라이드|페이지) \d+\]")
 
@@ -26,6 +28,7 @@ class Question:
     chunk_id: int
     choices: list[str] = field(default_factory=list)
     keywords: list[str] = field(default_factory=list)
+    quote: str = ""  # 근거 조각에서 그대로 옮겨 온 문장
 
 
 def _squash(text: str) -> str:
@@ -66,14 +69,16 @@ def validate_question(raw: object, chunks: dict[int, str]) -> tuple[Question | N
     return _validate_short(raw, prompt, answer, evidence)
 
 
-def _answer_in_evidence(answer: str, evidence: str) -> bool:
-    """정답의 단어 중 절반 이상이 근거 본문에 있어야 한다. 한 단어만 겹치는 지어낸 정답을 막는다."""
-    lowered = evidence.lower()
-    words = [w.lower() for w in WORD.findall(answer) if len(w) >= 2]
-    if not words:  # "5" 같은 한 글자 정답
-        return bool(answer) and _squash(answer) in _squash(evidence)
-    hits = sum(1 for w in words if w in lowered)
-    return hits * 2 >= len(words)
+def _quote(raw: dict, evidence: str) -> str | None:
+    """LLM이 근거로 든 인용문. 근거 조각에 실제로 있는 문장이어야 한다.
+
+    정답 문구를 근거와 직접 대조하면 영어 슬라이드에 한국어 정답일 때 항상 어긋난다.
+    인용문은 슬라이드에서 그대로 옮겨 오게 하므로 언어와 무관하게 확인할 수 있다.
+    """
+    quote = _clean(raw.get("quote"))
+    if len(_squash(quote)) < QUOTE_MIN:
+        return None
+    return quote if _squash(quote) in _squash(evidence) else None
 
 
 def _validate_mcq(raw: dict, prompt: str, answer: str, evidence: str) -> tuple[Question | None, str]:
@@ -85,9 +90,10 @@ def _validate_mcq(raw: dict, prompt: str, answer: str, evidence: str) -> tuple[Q
         return None, "bad_choices"
     if _squash(answer) not in {_squash(c) for c in choices} or not answer:
         return None, "bad_answer"
-    if not _answer_in_evidence(answer, evidence):
-        return None, "answer_not_in_evidence"
-    return Question("mcq", prompt, answer, raw["chunk_id"], choices=choices), ""
+    quote = _quote(raw, evidence)
+    if quote is None:
+        return None, "quote_not_in_evidence"
+    return Question("mcq", prompt, answer, raw["chunk_id"], choices=choices, quote=quote), ""
 
 
 def _validate_short(raw: dict, prompt: str, answer: str, evidence: str) -> tuple[Question | None, str]:
@@ -97,12 +103,15 @@ def _validate_short(raw: dict, prompt: str, answer: str, evidence: str) -> tuple
     if not isinstance(keywords, list):
         return None, "bad_keywords"
     keywords = [_clean(k) for k in keywords]
-    if not 2 <= len(keywords) <= 5 or any(len(_squash(k)) < 2 for k in keywords):
+    if not 2 <= len(keywords) <= 5 or any(not 2 <= len(_squash(k)) <= KEYWORD_MAX for k in keywords):
         return None, "bad_keywords"
     squashed = _squash(evidence)
     if not all(_squash(k) in squashed for k in keywords):
         return None, "keyword_not_in_evidence"
-    return Question("short", prompt, answer, raw["chunk_id"], keywords=keywords), ""
+    quote = _quote(raw, evidence)
+    if quote is None:
+        return None, "quote_not_in_evidence"
+    return Question("short", prompt, answer, raw["chunk_id"], keywords=keywords, quote=quote), ""
 
 
 def filter_valid(raws: list, chunks: dict[int, str]) -> tuple[list[Question], int]:

@@ -149,10 +149,10 @@ class Store:
         with self.conn() as c:
             for q in questions:
                 c.execute(
-                    "INSERT INTO questions (material_id, chunk_id, kind, prompt, choices, answer, keywords) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    "INSERT INTO questions (material_id, chunk_id, kind, prompt, choices, answer, keywords, quote) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                     (material_id, q.chunk_id, q.kind, q.prompt, json.dumps(q.choices, ensure_ascii=False),
-                     q.answer, json.dumps(q.keywords, ensure_ascii=False)))
+                     q.answer, json.dumps(q.keywords, ensure_ascii=False), q.quote))
 
     def list_questions(self, material_id: int):
         with self.conn() as c:
@@ -165,7 +165,7 @@ class Store:
     @staticmethod
     def to_question(row) -> Question:
         return Question(row["kind"], row["prompt"], row["answer"], row["chunk_id"],
-                        choices=json.loads(row["choices"]), keywords=json.loads(row["keywords"]))
+                        choices=json.loads(row["choices"]), keywords=json.loads(row["keywords"]), quote=row["quote"])
 
     # --- 풀이 -------------------------------------------------------------
 

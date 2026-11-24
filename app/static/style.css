@@ -184,3 +184,6 @@ table.log th { width: auto; }
   .top { flex-wrap: wrap; gap: 0.6rem; padding: 0.8rem 1rem; }
   .timerbar { margin: 1rem; }
 }
+
+.quote { background: #fff7d6; border-radius: 10px; padding: 0.7rem 1rem; font-weight: 600; }
+.quote span { color: var(--warn); font-size: 0.8rem; margin-right: 0.5rem; }

@@ -42,7 +42,8 @@ def _shape_lines(shape) -> list[str]:
             lines.extend(_shape_lines(child))
     if getattr(shape, "has_text_frame", False) and shape.has_text_frame:
         for paragraph in shape.text_frame.paragraphs:
-            line = "".join(run.text for run in paragraph.runs).strip()
+            # 문단 안의 줄바꿈(\v)은 공백으로 바꾼다. 그냥 이으면 단어가 붙는다.
+            line = re.sub(r"\s+", " ", paragraph.text.replace("\v", " ")).strip()
             if line:
                 lines.append(line)
     if getattr(shape, "has_table", False) and shape.has_table:

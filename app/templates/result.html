@@ -14,6 +14,7 @@
     <dt>채점 방식</dt>
     <dd>{% if by == "llm" %}LLM 채점{% elif by == "keywords" %}핵심어 채점{% else %}정답 일치{% endif %}</dd>
   </dl>
+  {% if q.quote %}<p class="quote"><span>근거 문장</span> {{ q.quote }}</p>{% endif %}
   <details open>
     <summary>근거 자료</summary>
     <blockquote>{{ chunk.text }}</blockquote>
