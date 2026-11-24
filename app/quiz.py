@@ -14,6 +14,8 @@ KEYWORD_THRESHOLD = 0.6
 CLOZE_MIN_TEXT = 30
 CLOZE_MIN_WORD = 4
 BLANK = "____"
+CLOZE_MAX_SENTENCE = 400
+LABEL = re.compile(r"\[(?:슬라이드|페이지) \d+\]")
 
 
 @dataclass(frozen=True)
@@ -32,7 +34,10 @@ def _squash(text: str) -> str:
 
 
 def _clean(text: object) -> str:
-    return re.sub(r"\s+", " ", str(text)).strip()
+    """문자열만 받는다. null이나 숫자는 빈 문자열로 본다("None"이 저장되지 않게)."""
+    if not isinstance(text, str):
+        return ""
+    return re.sub(r"\s+", " ", text).strip()
 
 
 def _evidence(raw: dict, chunks: dict[int, str]) -> str | None:
@@ -61,6 +66,16 @@ def validate_question(raw: object, chunks: dict[int, str]) -> tuple[Question | N
     return _validate_short(raw, prompt, answer, evidence)
 
 
+def _answer_in_evidence(answer: str, evidence: str) -> bool:
+    """정답의 단어 중 절반 이상이 근거 본문에 있어야 한다. 한 단어만 겹치는 지어낸 정답을 막는다."""
+    lowered = evidence.lower()
+    words = [w.lower() for w in WORD.findall(answer) if len(w) >= 2]
+    if not words:  # "5" 같은 한 글자 정답
+        return bool(answer) and _squash(answer) in _squash(evidence)
+    hits = sum(1 for w in words if w in lowered)
+    return hits * 2 >= len(words)
+
+
 def _validate_mcq(raw: dict, prompt: str, answer: str, evidence: str) -> tuple[Question | None, str]:
     choices = raw.get("choices")
     if not isinstance(choices, list):
@@ -70,8 +85,7 @@ def _validate_mcq(raw: dict, prompt: str, answer: str, evidence: str) -> tuple[Q
         return None, "bad_choices"
     if _squash(answer) not in {_squash(c) for c in choices} or not answer:
         return None, "bad_answer"
-    words = [w.lower() for w in WORD.findall(answer) if len(w) >= 2]
-    if not any(w in evidence.lower() for w in words):
+    if not _answer_in_evidence(answer, evidence):
         return None, "answer_not_in_evidence"
     return Question("mcq", prompt, answer, raw["chunk_id"], choices=choices), ""
 
@@ -82,8 +96,8 @@ def _validate_short(raw: dict, prompt: str, answer: str, evidence: str) -> tuple
     keywords = raw.get("keywords")
     if not isinstance(keywords, list):
         return None, "bad_keywords"
-    keywords = [_clean(k) for k in keywords if _clean(k)]
-    if not 2 <= len(keywords) <= 5:
+    keywords = [_clean(k) for k in keywords]
+    if not 2 <= len(keywords) <= 5 or any(len(_squash(k)) < 2 for k in keywords):
         return None, "bad_keywords"
     squashed = _squash(evidence)
     if not all(_squash(k) in squashed for k in keywords):
@@ -128,7 +142,7 @@ def _strip_particle(word: str) -> str:
 
 def make_cloze(chunk_id: int, text: str) -> Question | None:
     """LLM을 쓸 수 없을 때의 대체 문제. 가장 긴 단어를 가린다."""
-    text = text.strip()
+    text = LABEL.sub("", text).strip()  # "[슬라이드 3]" 같은 표시는 문제에 쓰지 않는다
     if len(text) < CLOZE_MIN_TEXT:
         return None
     words = [_strip_particle(w) for w in WORD.findall(text)]
@@ -138,8 +152,14 @@ def make_cloze(chunk_id: int, text: str) -> Question | None:
     answer = max(words, key=len)  # 길이가 같으면 먼저 나온 단어
     sentences = [s.strip() for s in SENTENCE_END.split(text) if answer in s]
     sentence = sentences[0] if sentences else text
-    sentence = re.sub(r"\s+", " ", sentence)[:400]
+    sentence = re.sub(r"\s+", " ", sentence)
+    at = sentence.find(answer)
+    if len(sentence) > CLOZE_MAX_SENTENCE:  # 긴 문장은 정답 주변만 남긴다
+        start = max(0, at - CLOZE_MAX_SENTENCE // 2)
+        sentence = sentence[start : start + CLOZE_MAX_SENTENCE]
     prompt = "빈칸에 들어갈 말을 쓰세요.\n" + sentence.replace(answer, BLANK)
+    if BLANK not in prompt:
+        return None
     return Question("cloze", prompt, answer, chunk_id)
 
 

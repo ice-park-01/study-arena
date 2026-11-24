@@ -201,7 +201,7 @@ def test_one_letter_keywords_are_rejected():
 
 
 def test_cloze_never_blanks_the_slide_label():
-    q = make_cloze(3, "[슬라이드 3] 운영체제는 자원을 관리한다. 커널이 핵심이다.")
+    q = make_cloze(3, "[슬라이드 3] 운영체제는 컴퓨터의 자원을 관리한다. 그 중심에는 커널이 있다.")
     assert q is not None
     assert q.answer != "슬라이드"
     assert "[슬라이드 3]" not in q.prompt

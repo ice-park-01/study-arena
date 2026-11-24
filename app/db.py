@@ -231,6 +231,11 @@ class Store:
                       (user_id, _iso(now)))
         return credited
 
+    def clear_last_tick(self, user_id: int) -> None:
+        """공부를 멈췄다. 다음 신호는 새 세션의 첫 신호가 된다."""
+        with self.conn() as c:
+            c.execute("DELETE FROM last_seen WHERE user_id = ?", (user_id,))
+
     def seconds_on(self, user_id: int, day: date) -> int:
         return self.seconds_between([user_id], day, day).get(user_id, 0)
 
@@ -311,6 +316,18 @@ class Store:
                 return None
             c.execute("UPDATE jobs SET status = 'running' WHERE id = ?", (row["id"],))
             return row["material_id"]
+
+    def requeue_interrupted_jobs(self) -> int:
+        """작업자가 처리 도중 교체돼 멈춘 작업을 처음부터 다시 하도록 되돌린다."""
+        with self.conn() as c:
+            rows = c.execute("SELECT material_id FROM jobs WHERE status = 'running'").fetchall()
+            for row in rows:
+                mid = row["material_id"]
+                c.execute("DELETE FROM questions WHERE material_id = ?", (mid,))
+                c.execute("DELETE FROM chunks WHERE material_id = ?", (mid,))
+                c.execute("UPDATE materials SET status = 'queued', error = NULL WHERE id = ?", (mid,))
+            c.execute("UPDATE jobs SET status = 'queued' WHERE status = 'running'")
+            return len(rows)
 
     def finish_job(self, material_id: int) -> None:
         with self.conn() as c:

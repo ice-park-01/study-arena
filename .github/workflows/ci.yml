@@ -30,6 +30,7 @@ jobs:
       - uses: actions/checkout@v4
       - id: meta
         run: echo "image=${{ secrets.DOCKERHUB_USERNAME }}/study-arena:${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-qemu-action@v3          # arm64(Apple Silicon)용 이미지도 함께 만든다
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
@@ -60,7 +61,8 @@ jobs:
           PREVIOUS=$(docker inspect --format '{{.Config.Image}}' study-arena-web-1 2>/dev/null || true)
           echo "previous image: ${PREVIOUS:-none}"
           docker compose -p study-arena pull
-          docker compose -p study-arena up -d --no-build
+          # 새 컨테이너가 뜨지 못해도 아래 상태 확인과 되돌리기까지 가야 한다
+          docker compose -p study-arena up -d --no-build || true
 
           healthy() {
             for i in $(seq 1 30); do

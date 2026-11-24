@@ -59,7 +59,7 @@ class LLMClient:
             raise LLMError(f"LLM 오류 응답: HTTP {response.status_code}")
         try:
             text = _read_text(response.json())
-        except (ValueError, KeyError, IndexError, TypeError) as exc:
+        except (ValueError, KeyError, IndexError, TypeError, AttributeError) as exc:
             raise LLMError("LLM 응답 형식을 읽을 수 없습니다.") from exc
         if not text:
             raise LLMError("LLM 응답이 비어 있습니다.")

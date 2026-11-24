@@ -206,7 +206,7 @@ def create_app(db_path: str | None = None, llm: LLMClient | None = None, now=Non
         filename = Path(file.filename or "").name
         if not filename.lower().endswith(SUPPORTED):
             return materials_page(request, user, "지원하지 않는 파일 형식입니다. pptx, pdf, txt만 올릴 수 있습니다.", 400)
-        data = await file.read()
+        data = await file.read(MAX_UPLOAD + 1)  # 상한보다 1바이트만 더 읽어 초과 여부를 안다
         if not data:
             return materials_page(request, user, "빈 파일입니다.", 400)
         if len(data) > MAX_UPLOAD:
@@ -283,6 +283,12 @@ def create_app(db_path: str | None = None, llm: LLMClient | None = None, now=Non
         credited = store.record_tick(user["id"], moment)
         return {"credited": credited, "today_seconds": store.seconds_on(user["id"], kst_date(moment)),
                 "studying": True}
+
+    @app.post("/api/pause")
+    def pause(request: Request):
+        """공부를 멈췄다는 신호. 멈춘 동안의 시간이 인정되지 않게 세션을 끝낸다."""
+        store.clear_last_tick(user_of(request)["id"])
+        return {"studying": False}
 
     # --- 그룹 ----------------------------------------------------------------
 

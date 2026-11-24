@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 import time
 from datetime import datetime, timezone
 
@@ -74,8 +75,16 @@ def main() -> None:
     store.migrate()
     llm = LLMClient.from_env()
     log.info("worker started (llm %s)", "enabled" if llm.enabled else "disabled")
+    if (requeued := store.requeue_interrupted_jobs()):
+        log.info("requeued %s interrupted job(s)", requeued)
+
+    def heartbeat() -> None:  # 긴 작업 중에도 /health 가 작업자를 살아 있다고 보게 한다
+        while True:
+            store.set_meta("worker_seen", datetime.now(timezone.utc).isoformat())
+            time.sleep(5)
+
+    threading.Thread(target=heartbeat, daemon=True).start()
     while True:
-        store.set_meta("worker_seen", datetime.now(timezone.utc).isoformat())
         if run_once(store, llm):
             log.info("jobs processed")
         time.sleep(2)

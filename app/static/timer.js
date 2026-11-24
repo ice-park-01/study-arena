@@ -40,7 +40,8 @@
     try { localStorage.setItem("arena.running", running ? "1" : "0"); } catch (e) {}
     syncedAt = Date.now();
     render();
-    tick();
+    if (running) tick();
+    else fetch("/api/pause", { method: "POST" }).catch(() => {});
   });
   document.addEventListener("visibilitychange", () => { syncedAt = Date.now(); tick(); });
   setInterval(tick, TICK_MS);
