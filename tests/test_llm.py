@@ -112,7 +112,7 @@ def test_extract_json_rejects_plain_text():
 
 
 def test_generate_keeps_only_valid_questions():
-    bad = {"kind": "mcq", "prompt": "근거 없는 문제", "choices": ["a", "b", "c", "d"], "answer": "a"}
+    bad = {"kind": "mcq", "prompt": "보기가 모자란 문제", "choices": ["a", "b"], "answer": "a", "chunk_id": 7}
     llm, post = client(json.dumps({"questions": GOOD["questions"] + [bad]}))
     result = generate_questions(CHUNKS, llm)
     assert [q.kind for q in result.questions] == ["mcq", "short"]
@@ -155,7 +155,7 @@ def test_generate_falls_back_when_llm_is_down():
 
 
 def test_generate_falls_back_when_every_question_is_discarded():
-    bad = {"kind": "mcq", "prompt": "근거 없음", "choices": ["a", "b", "c", "d"], "answer": "a", "chunk_id": 99}
+    bad = {"kind": "mcq", "prompt": "정답이 보기에 없음", "choices": ["a", "b", "c", "d"], "answer": "e", "chunk_id": 7}
     llm, _ = client(json.dumps({"questions": [bad]}))
     result = generate_questions(CHUNKS, llm)
     assert result.discarded == 1
