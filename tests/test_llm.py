@@ -16,6 +16,7 @@ GOOD = {
             "prompt": "TDD의 구호는?",
             "choices": ["red, green, refactor", "plan, do, see", "build, ship, run", "read, eval, print"],
             "answer": "red, green, refactor",
+            "quote": "구호는 red, green, refactor 이다",
             "chunk_id": 7,
         },
         {
@@ -23,6 +24,7 @@ GOOD = {
             "prompt": "TDD에서 먼저 작성하는 것은?",
             "answer": "테스트",
             "keywords": ["테스트", "먼저"],
+            "quote": "테스트를 먼저 작성하는 개발 방법이다",
             "chunk_id": 7,
         },
     ]

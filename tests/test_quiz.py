@@ -20,6 +20,7 @@ def mcq(**over):
         "prompt": "TDD의 구호로 알맞은 것은?",
         "choices": ["red, green, refactor", "plan, do, see", "build, ship, run", "read, eval, print"],
         "answer": "red, green, refactor",
+        "quote": "TDD의 구호는 red, green, refactor 이다",
         "chunk_id": 1,
     }
     raw.update(over)
@@ -32,6 +33,7 @@ def short(**over):
         "prompt": "TDD에서 코드를 작성하기 전에 먼저 하는 일은?",
         "answer": "테스트를 먼저 작성한다",
         "keywords": ["테스트", "먼저"],
+        "quote": "테스트를 먼저 작성하고",
         "chunk_id": 1,
     }
     raw.update(over)
@@ -74,14 +76,6 @@ def test_mcq_needs_four_distinct_choices():
 def test_mcq_answer_must_be_a_choice():
     q, reason = validate_question(mcq(answer="green, red, refactor"), CHUNKS)
     assert (q, reason) == (None, "bad_answer")
-
-
-def test_mcq_answer_must_appear_in_chunk():
-    raw = mcq(
-        choices=["waterfall", "plan, do, see", "build, ship, run", "read, eval, print"],
-        answer="waterfall",
-    )
-    assert validate_question(raw, CHUNKS) == (None, "answer_not_in_evidence")
 
 
 def test_empty_prompt_is_discarded():
@@ -180,18 +174,9 @@ def test_null_fields_are_not_saved_as_the_word_none():
     assert validate_question(short(keywords=["테스트", None, 3]), CHUNKS) == (None, "bad_keywords")
 
 
-def test_mcq_answer_needs_most_of_its_words_in_the_chunk():
-    # "TDD" 한 단어만 근거에 있고 나머지는 지어낸 정답
-    raw = mcq(
-        choices=["TDD는 배포 이후에 블록체인으로 검증한다", "plan, do, see", "build, ship, run", "read, eval, print"],
-        answer="TDD는 배포 이후에 블록체인으로 검증한다",
-    )
-    assert validate_question(raw, CHUNKS) == (None, "answer_not_in_evidence")
-
-
 def test_single_character_answer_can_be_valid():
     chunks = {1: "TDD cycle has 5 steps: add a test, run, write code, run tests, refactor."}
-    raw = mcq(prompt="TDD cycle의 단계 수는?", choices=["3", "4", "5", "6"], answer="5")
+    raw = mcq(prompt="TDD cycle의 단계 수는?", choices=["3", "4", "5", "6"], answer="5", quote="TDD cycle has 5 steps")
     q, reason = validate_question(raw, chunks)
     assert reason == "" and q.answer == "5"
 
@@ -211,3 +196,44 @@ def test_cloze_prompt_always_contains_the_blank():
     text = "가나다 " * 150 + "Supercalifragilistic 라는 단어가 문장 끝에 있다"
     q = make_cloze(1, text)
     assert q is None or "____" in q.prompt
+
+
+# --- 근거 인용문: 슬라이드가 영어이고 문제가 한국어여도 통하는 규칙 -----------------
+
+
+def test_quote_must_be_copied_from_the_cited_chunk():
+    assert validate_question(mcq(quote="TDD는 배포한 뒤에 테스트를 작성한다"), CHUNKS) == (None, "quote_not_in_evidence")
+    assert validate_question(short(quote="Docker는 컨테이너 이미지로 묶는다"), CHUNKS) == (None, "quote_not_in_evidence")
+
+
+def test_missing_or_trivial_quote_is_rejected():
+    raw = mcq()
+    del raw["quote"]
+    assert validate_question(raw, CHUNKS) == (None, "quote_not_in_evidence")
+    assert validate_question(mcq(quote=None), CHUNKS) == (None, "quote_not_in_evidence")
+    assert validate_question(mcq(quote="TDD"), CHUNKS) == (None, "quote_not_in_evidence")  # 너무 짧아 근거가 못 된다
+
+
+def test_quote_comparison_ignores_case_and_spacing():
+    q, reason = validate_question(mcq(quote="tdd의  구호는 RED, green,refactor"), CHUNKS)
+    assert reason == ""
+    assert q.quote == "tdd의 구호는 RED, green,refactor"
+
+
+def test_korean_answer_over_an_english_slide_is_accepted():
+    chunks = {4: "[슬라이드 4] Mock objects are simulated objects that mimic the behavior of real objects."}
+    raw = {
+        "kind": "mcq",
+        "prompt": "mock object에 대한 설명으로 알맞은 것은?",
+        "choices": ["실제 객체의 동작을 흉내 내는 가짜 객체", "실행 속도를 재는 도구", "코드 양식 검사기", "버전 관리 도구"],
+        "answer": "실제 객체의 동작을 흉내 내는 가짜 객체",
+        "quote": "simulated objects that mimic the behavior of real objects",
+        "chunk_id": 4,
+    }
+    q, reason = validate_question(raw, chunks)
+    assert reason == "" and q.kind == "mcq"
+
+
+def test_keywords_must_be_short_terms():
+    long_phrase = "테스트를 먼저 작성하고 그 테스트를 통과하는 코드를 작성하는"
+    assert validate_question(short(keywords=["테스트", long_phrase]), CHUNKS) == (None, "bad_keywords")

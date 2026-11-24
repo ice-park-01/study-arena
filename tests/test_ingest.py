@@ -62,3 +62,17 @@ def test_unsupported_file_type_raises():
 def test_broken_pptx_raises_value_error():
     with pytest.raises(ValueError, match="읽을 수 없는"):
         extract_chunks("broken.pptx", b"not a zip file")
+
+
+def test_line_breaks_inside_a_paragraph_become_spaces():
+    prs = Presentation()
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    box = slide.shapes.add_textbox(Inches(1), Inches(1), Inches(8), Inches(1))
+    paragraph = box.text_frame.paragraphs[0]
+    paragraph.add_run().text = "TDD is a software development"
+    paragraph.add_line_break()
+    paragraph.add_run().text = "process that relies on short cycles."
+    buf = io.BytesIO()
+    prs.save(buf)
+    [chunk] = extract_chunks("lecture.pptx", buf.getvalue())
+    assert "development process" in chunk

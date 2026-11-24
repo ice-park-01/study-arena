@@ -89,3 +89,14 @@ def test_clearing_last_seen_ends_the_session(store):
     store.clear_last_tick(uid)
     assert store.last_tick(uid) is None
     assert store.record_tick(uid, T0 + timedelta(seconds=30)) == 0
+
+
+def test_quote_is_stored_with_the_question(store):
+    uid = store.create_user("성진", "h")
+    mid = store.add_material(uid, "a.txt", b"data")
+    [cid] = store.add_chunks(mid, ["조각 본문에 있는 문장"])
+    store.add_questions(mid, [Question("short", "Q", "a", cid, keywords=["조각", "문장"], quote="본문에 있는 문장")])
+    row = store.list_questions(mid)[0]
+    assert row["quote"] == "본문에 있는 문장"
+    assert store.to_question(row).quote == "본문에 있는 문장"
+    assert store.schema_version() == 2
