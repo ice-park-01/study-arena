@@ -1,0 +1,11 @@
+.git
+.venv
+.env
+data
+materials
+tests
+docs
+__pycache__
+*.pyc
+.pytest_cache
+actions-runner

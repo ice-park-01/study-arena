@@ -1,0 +1,33 @@
+# 로컬 실행:  docker compose up --build
+# 배포(CI):   IMAGE=<계정>/study-arena:<커밋> docker compose up -d --no-build
+services:
+  web:
+    build: .
+    image: ${IMAGE:-study-arena:local}
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      INLINE_JOBS: "0"                              # 문제 출제는 worker 컨테이너가 한다
+      FACTCHAT_API_KEY: ${FACTCHAT_API_KEY:-}       # 비어 있으면 빈칸 문제로 대체한다
+      LLM_MODEL: ${LLM_MODEL:-gpt-5.6-luna}
+    volumes:
+      - arena-data:/data
+    restart: unless-stopped
+
+  worker:
+    image: ${IMAGE:-study-arena:local}
+    command: ["python", "-m", "app.worker"]
+    environment:
+      FACTCHAT_API_KEY: ${FACTCHAT_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-gpt-5.6-luna}
+    volumes:
+      - arena-data:/data
+    healthcheck:
+      disable: true
+    depends_on:
+      web:
+        condition: service_healthy                  # web이 DB 구조를 먼저 적용한 뒤에 시작한다
+    restart: unless-stopped
+
+volumes:
+  arena-data:

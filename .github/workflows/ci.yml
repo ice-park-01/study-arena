@@ -1,0 +1,86 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # 1. 테스트 게이트: 여기서 실패하면 아래 build, deploy 는 실행되지 않는다.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - name: Run tests (실제 LLM과 네트워크는 부르지 않는다)
+        run: python -m pytest -q
+
+  # 2. 이미지 빌드와 Docker Hub 업로드 (main 에 push 했을 때만)
+  build:
+    needs: test
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: meta
+        run: echo "image=${{ secrets.DOCKERHUB_USERNAME }}/study-arena:${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          build-args: APP_VERSION=${{ github.sha }}
+          tags: |
+            ${{ steps.meta.outputs.image }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/study-arena:latest
+
+  # 3. 내 컴퓨터(Self-hosted Runner)에 배포하고, 상태 확인에 실패하면 이전 버전으로 되돌린다.
+  deploy:
+    needs: build
+    runs-on: self-hosted
+    env:
+      FACTCHAT_API_KEY: ${{ secrets.FACTCHAT_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy
+        shell: bash
+        run: |
+          export IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/study-arena:${GITHUB_SHA::7}"
+          PREVIOUS=$(docker inspect --format '{{.Config.Image}}' study-arena-web-1 2>/dev/null || true)
+          echo "previous image: ${PREVIOUS:-none}"
+          docker compose -p study-arena pull
+          docker compose -p study-arena up -d --no-build
+
+          healthy() {
+            for i in $(seq 1 30); do
+              body=$(curl -fsS http://127.0.0.1:8000/health || true)
+              echo "[$i] $body"
+              if echo "$body" | grep -q '"status":"ok"' && echo "$body" | grep -q "$1"; then return 0; fi
+              sleep 2
+            done
+            return 1
+          }
+
+          if healthy "$GITHUB_SHA"; then
+            echo "### 배포 성공 :rocket:" >> "$GITHUB_STEP_SUMMARY"
+            echo "- 이미지: \`$IMAGE\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "- 상태: \`$(curl -fsS http://127.0.0.1:8000/health)\`" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### 배포 실패: 이전 버전으로 되돌립니다" >> "$GITHUB_STEP_SUMMARY"
+            if [ -n "$PREVIOUS" ]; then
+              IMAGE="$PREVIOUS" docker compose -p study-arena up -d --no-build
+              echo "- 되돌린 이미지: \`$PREVIOUS\`" >> "$GITHUB_STEP_SUMMARY"
+            fi
+            exit 1
+          fi
