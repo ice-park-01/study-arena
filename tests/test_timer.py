@@ -76,3 +76,13 @@ def test_format_duration():
     assert format_duration(59) == "0분"
     assert format_duration(65 * 60) == "1시간 05분"
     assert format_duration(25 * 60 + 10) == "25분"
+
+
+def test_credit_crossing_midnight_is_split_by_korean_date():
+    from app.timer import split_by_day
+
+    midnight = datetime(2026, 11, 24, 15, 0, 0, tzinfo=timezone.utc)  # 한국 시간 25일 0시
+    assert split_by_day(midnight, 30) == [(date(2026, 11, 24), 30)]
+    assert split_by_day(midnight + timedelta(seconds=10), 30) == [(date(2026, 11, 24), 20), (date(2026, 11, 25), 10)]
+    assert split_by_day(midnight + timedelta(seconds=30), 30) == [(date(2026, 11, 25), 30)]
+    assert split_by_day(midnight, 0) == []
