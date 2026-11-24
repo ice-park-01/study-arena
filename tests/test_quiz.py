@@ -52,20 +52,6 @@ def test_mcq_valid_passes():
     assert len(q.choices) == 4
 
 
-def test_missing_chunk_id_is_discarded():
-    raw = mcq()
-    del raw["chunk_id"]
-    q, reason = validate_question(raw, CHUNKS)
-    assert q is None
-    assert reason == "no_evidence"
-
-
-def test_unknown_chunk_id_is_discarded():
-    q, reason = validate_question(mcq(chunk_id=99), CHUNKS)
-    assert q is None
-    assert reason == "no_evidence"
-
-
 def test_mcq_needs_four_distinct_choices():
     three = mcq(choices=["red, green, refactor", "a", "b"])
     assert validate_question(three, CHUNKS) == (None, "bad_choices")

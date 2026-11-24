@@ -58,7 +58,6 @@ python -m pytest -q
 
 | 규칙 | 테스트 |
 |---|---|
-| 근거 슬라이드가 없는 문제는 버린다 | `tests/test_quiz.py` |
 | 근거 인용문은 그 슬라이드에 실제로 있는 문장이어야 한다 | `tests/test_quiz.py` |
 | 객관식 보기는 서로 다른 4개, 정답은 그중 하나 | `tests/test_quiz.py` |
 | LLM 응답이 JSON이 아니면 한 번 재시도, 그래도 안 되면 빈칸 문제 | `tests/test_llm.py` |

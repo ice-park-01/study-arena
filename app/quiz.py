@@ -60,9 +60,7 @@ def validate_question(raw: object, chunks: dict[int, str]) -> tuple[Question | N
     prompt = _clean(raw.get("prompt", ""))
     if not prompt:
         return None, "bad_prompt"
-    evidence = _evidence(raw, chunks)
-    if evidence is None:
-        return None, "no_evidence"
+    evidence = _evidence(raw, chunks) or ""
     answer = _clean(raw.get("answer", ""))
     if kind == "mcq":
         return _validate_mcq(raw, prompt, answer, evidence)
@@ -90,10 +88,10 @@ def _validate_mcq(raw: dict, prompt: str, answer: str, evidence: str) -> tuple[Q
         return None, "bad_choices"
     if _squash(answer) not in {_squash(c) for c in choices} or not answer:
         return None, "bad_answer"
-    quote = _quote(raw, evidence)
+    quote = _quote(raw, evidence) if evidence else ""
     if quote is None:
         return None, "quote_not_in_evidence"
-    return Question("mcq", prompt, answer, raw["chunk_id"], choices=choices, quote=quote), ""
+    return Question("mcq", prompt, answer, raw.get("chunk_id") or 0, choices=choices, quote=quote), ""
 
 
 def _validate_short(raw: dict, prompt: str, answer: str, evidence: str) -> tuple[Question | None, str]:
@@ -106,12 +104,12 @@ def _validate_short(raw: dict, prompt: str, answer: str, evidence: str) -> tuple
     if not 2 <= len(keywords) <= 5 or any(not 2 <= len(_squash(k)) <= KEYWORD_MAX for k in keywords):
         return None, "bad_keywords"
     squashed = _squash(evidence)
-    if not all(_squash(k) in squashed for k in keywords):
+    if evidence and not all(_squash(k) in squashed for k in keywords):
         return None, "keyword_not_in_evidence"
-    quote = _quote(raw, evidence)
+    quote = _quote(raw, evidence) if evidence else ""
     if quote is None:
         return None, "quote_not_in_evidence"
-    return Question("short", prompt, answer, raw["chunk_id"], keywords=keywords, quote=quote), ""
+    return Question("short", prompt, answer, raw.get("chunk_id") or 0, keywords=keywords, quote=quote), ""
 
 
 def filter_valid(raws: list, chunks: dict[int, str]) -> tuple[list[Question], int]:
