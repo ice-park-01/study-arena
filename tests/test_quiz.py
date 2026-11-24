@@ -223,3 +223,17 @@ def test_korean_answer_over_an_english_slide_is_accepted():
 def test_keywords_must_be_short_terms():
     long_phrase = "테스트를 먼저 작성하고 그 테스트를 통과하는 코드를 작성하는"
     assert validate_question(short(keywords=["테스트", long_phrase]), CHUNKS) == (None, "bad_keywords")
+
+
+def test_question_without_evidence_is_discarded():
+    raw = mcq()
+    del raw["chunk_id"]  # LLM이 근거 슬라이드 번호를 빼먹었다
+    q, reason = validate_question(raw, CHUNKS)
+    assert q is None
+    assert reason == "no_evidence"
+
+
+def test_question_citing_an_unknown_slide_is_discarded():
+    q, reason = validate_question(mcq(chunk_id=99), CHUNKS)
+    assert q is None
+    assert reason == "no_evidence"
