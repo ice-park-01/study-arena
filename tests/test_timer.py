@@ -18,7 +18,7 @@ def after(seconds):
 
 
 def test_limits_match_the_spec():
-    assert MAX_CREDIT == 31
+    assert MAX_CREDIT == 30
     assert IDLE_LIMIT == 90
 
 
